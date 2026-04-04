@@ -149,3 +149,30 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ MAKE ADMIN — sirf ek baar use karo
+exports.makeAdmin = async (req, res) => {
+  try {
+    const { phone, secretKey } = req.body;
+
+    // Secret key check — sirf aap jante ho
+    if (secretKey !== process.env.ADMIN_SECRET) {
+      return res.status(403).json({ msg: "Wrong secret key" });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { phone },
+      { role: "admin" },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    res.json({
+      msg: "Admin ban gaya!",
+      user: { name: user.name, phone: user.phone, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
