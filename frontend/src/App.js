@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Navbar from "./components/Navbar";
 import Admin from "./pages/Admin";
+import HowItWorks from "./pages/HowItWorks";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/how-it-works" element={<HowItWorks />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

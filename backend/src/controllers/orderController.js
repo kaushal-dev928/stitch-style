@@ -5,36 +5,43 @@ const { orderSchema } = require("../utils/validation");
 // ✅ CREATE ORDER
 exports.createOrder = async (req, res) => {
   try {
-    // 🔥 validation
+    console.log("📥 Order body:", req.body);
+    console.log("👤 User:", req.user);
+
     const { error } = orderSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({
-        msg: error.details[0].message,
-      });
+      console.log("❌ Validation error:", error.details[0].message);
+      return res.status(400).json({ msg: error.details[0].message });
     }
 
-    const { clothType, fabric, measurements, paymentMethod } = req.body;
+    const { clothType, fabric, measurements, paymentMethod, totalAmount } =
+      req.body;
 
     const order = new Order({
-      userId: req.user._id, // ✅ FIXED
+      userId: req.user._id,
       clothType,
       fabric,
       measurements,
       paymentMethod,
-      paymentStatus: "PAID",
-      status: "CONFIRMED",
-      timeline: [{ status: "CONFIRMED" }],
+      totalAmount, // ✅ ye add karo
+      paymentStatus: "PENDING", // ✅ PAID ki jagah PENDING — Razorpay baad mein update karega
+      status: "PLACED",
+      timeline: [{ status: "PLACED" }],
     });
+
+    console.log("💾 Saving order..."); // ← add karo
 
     await order.save();
 
-    console.log("✅ Order Created");
+    console.log("✅ Order saved:", order._id); // ← add karo
 
     res.status(201).json({
       msg: "Order placed successfully",
       order,
     });
   } catch (err) {
+    console.log("❌ Order error:", err.message); // ← add karo
+    console.log("❌ Full error:", err); // ← add karo
     res.status(500).json({ error: err.message });
   }
 };

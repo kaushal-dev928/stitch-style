@@ -9,6 +9,11 @@ import {
   deleteProductAPI,
 } from "../api/productAPI";
 import { getAllOrdersAPI } from "../api/orderAPI";
+import {
+  getAllReviewsAdminAPI,
+  approveReviewAPI,
+  deleteReviewAPI,
+} from "../api/reviewAPI";
 import toast from "react-hot-toast";
 
 const EMPTY_FORM = {
@@ -41,22 +46,30 @@ export default function Admin() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ SAARE HOOKS PEHLE — early return se pehle
   const [activeTab, setActiveTab] = useState("products");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
+  // ✅ Products
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["products", ""],
     queryFn: () => getAllProductsAPI({}),
   });
 
+  // ✅ Orders
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
     queryKey: ["allOrders"],
     queryFn: getAllOrdersAPI,
   });
 
+  // ✅ Reviews
+  const { data: reviewsData } = useQuery({
+    queryKey: ["allReviews"],
+    queryFn: getAllReviewsAdminAPI,
+  });
+
+  // ✅ Product mutations
   const { mutate: createProduct, isPending: creating } = useMutation({
     mutationFn: createProductAPI,
     onSuccess: () => {
@@ -89,7 +102,26 @@ export default function Admin() {
     onError: () => toast.error("Delete failed"),
   });
 
-  // ✅ ADMIN CHECK — hooks ke BAAD
+  // ✅ Review mutations
+  const { mutate: approveReview } = useMutation({
+    mutationFn: approveReviewAPI,
+    onSuccess: () => {
+      toast.success("Review approved!");
+      queryClient.invalidateQueries(["allReviews"]);
+    },
+    onError: () => toast.error("Approve failed"),
+  });
+
+  const { mutate: deleteReview } = useMutation({
+    mutationFn: deleteReviewAPI,
+    onSuccess: () => {
+      toast.success("Review deleted!");
+      queryClient.invalidateQueries(["allReviews"]);
+    },
+    onError: () => toast.error("Delete failed"),
+  });
+
+  // ✅ Admin check — hooks ke BAAD
   if (user?.role !== "admin") {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -114,6 +146,7 @@ export default function Admin() {
 
   const products = productsData?.data || [];
   const orders = ordersData?.data || [];
+  const allReviews = reviewsData?.data || [];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -165,7 +198,7 @@ export default function Admin() {
   return (
     <div style={{ background: "#fafafa", minHeight: "100vh" }}>
 
-      {/* Header */}
+      {/* ── HEADER ── */}
       <div style={{
         background: "#fff", borderBottom: "1px solid #eee",
         padding: "16px 28px", display: "flex",
@@ -189,7 +222,7 @@ export default function Admin() {
         </button>
       </div>
 
-      {/* Stats */}
+      {/* ── STATS ── */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4,1fr)",
         gap: 12, padding: "20px 28px"
@@ -198,7 +231,7 @@ export default function Admin() {
           { num: products.length, label: "Total products", color: "#D4537E" },
           { num: orders.length, label: "Total orders", color: "#1D9E75" },
           { num: orders.filter(o => o.status !== "DELIVERED").length, label: "Active orders", color: "#EF9F27" },
-          { num: orders.filter(o => o.status === "DELIVERED").length, label: "Delivered", color: "#378ADD" },
+          { num: allReviews.filter(r => !r.isApproved).length, label: "Pending reviews", color: "#378ADD" },
         ].map((s) => (
           <div key={s.label} style={{
             background: "#fff", border: "1px solid #eee",
@@ -210,14 +243,14 @@ export default function Admin() {
         ))}
       </div>
 
-      {/* Tabs */}
+      {/* ── TABS ── */}
       <div style={{ padding: "0 28px", marginBottom: 20 }}>
         <div style={{
           display: "flex", border: "1px solid #eee",
           borderRadius: 10, overflow: "hidden",
           background: "#fff", width: "fit-content"
         }}>
-          {["products", "orders"].map((tab) => (
+          {["products", "orders", "reviews"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -230,7 +263,11 @@ export default function Admin() {
                 textTransform: "capitalize"
               }}
             >
-              {tab === "products" ? `Products (${products.length})` : `Orders (${orders.length})`}
+              {tab === "products"
+                ? `Products (${products.length})`
+                : tab === "orders"
+                ? `Orders (${orders.length})`
+                : `Reviews (${allReviews.length})`}
             </button>
           ))}
         </div>
@@ -253,7 +290,6 @@ export default function Admin() {
             </button>
           </div>
 
-          {/* Add / Edit Form */}
           {showForm && (
             <div style={{
               background: "#fff", border: "1px solid #eee",
@@ -370,7 +406,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Products list */}
           {loadingProducts ? (
             <div style={{ color: "#888", padding: 20 }}>Loading...</div>
           ) : products.length === 0 ? (
@@ -471,7 +506,9 @@ export default function Admin() {
                           {order.userId?.name || "Customer"} · {order.userId?.phone || ""} · ₹{order.totalAmount}
                         </div>
                         <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
-                          {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                            day: "numeric", month: "short", year: "numeric"
+                          })}
                         </div>
                       </div>
                       <div style={{
@@ -483,7 +520,6 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    {/* Measurements */}
                     <div style={{
                       display: "flex", gap: 16, fontSize: 12,
                       color: "#888", background: "#fafafa",
@@ -496,7 +532,6 @@ export default function Admin() {
                       ))}
                     </div>
 
-                    {/* Status update */}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {STATUS_OPTIONS.map((s) => (
                         <button
@@ -526,6 +561,98 @@ export default function Admin() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── REVIEWS TAB ── */}
+      {activeTab === "reviews" && (
+        <div style={{ padding: "0 28px" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>All reviews</div>
+
+          {allReviews.length === 0 ? (
+            <div style={{
+              background: "#fff", border: "1px solid #eee",
+              borderRadius: 12, padding: "40px",
+              textAlign: "center", color: "#aaa"
+            }}>
+              Koi review nahi hai abhi
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {allReviews.map((rev) => (
+                <div key={rev._id} style={{
+                  background: "#fff", border: "1px solid #eee",
+                  borderRadius: 12, padding: "16px 18px"
+                }}>
+                  <div style={{
+                    display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", marginBottom: 8
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>
+                        {rev.userId?.name || "User"} — {rev.clothType}
+                      </div>
+                      <div style={{ color: "#e8a87c", fontSize: 14, marginTop: 3, letterSpacing: 2 }}>
+                        {"★".repeat(rev.rating)}
+                        <span style={{ color: "#eee" }}>{"★".repeat(5 - rev.rating)}</span>
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: 11, padding: "4px 12px", borderRadius: 20,
+                      background: rev.isApproved ? "#E1F5EE" : "#FAEEDA",
+                      color: rev.isApproved ? "#085041" : "#633806",
+                      fontWeight: 500
+                    }}>
+                      {rev.isApproved ? "Approved" : "Pending"}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    fontSize: 13, color: "#666", lineHeight: 1.6,
+                    background: "#fafafa", borderRadius: 8,
+                    padding: "10px 12px", marginBottom: 10
+                  }}>
+                    "{rev.review}"
+                  </div>
+
+                  <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>
+                    {new Date(rev.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric"
+                    })}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {!rev.isApproved && (
+                      <button
+                        onClick={() => approveReview(rev._id)}
+                        style={{
+                          padding: "6px 16px", background: "#E1F5EE",
+                          color: "#085041", border: "1px solid #9FE1CB",
+                          borderRadius: 20, fontSize: 12, cursor: "pointer"
+                        }}
+                      >
+                        Approve ✓
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm("Review delete karna chahte ho?")) {
+                          deleteReview(rev._id);
+                        }
+                      }}
+                      style={{
+                        padding: "6px 16px", background: "#FCEBEB",
+                        color: "#A32D2D", border: "1px solid #F09595",
+                        borderRadius: 20, fontSize: 12, cursor: "pointer"
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

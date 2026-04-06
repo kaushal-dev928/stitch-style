@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createOrderAPI } from "../api/orderAPI";
+import { useAuth } from "../context/AuthContext";
+import { openRazorpay } from "../utils/razorpay";
 import toast from "react-hot-toast";
 
 export default function Order() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   const [form, setForm] = useState({
     clothType: location.state?.product?.name || "Kurti",
@@ -19,8 +22,27 @@ export default function Order() {
   const { mutate, isPending } = useMutation({
     mutationFn: createOrderAPI,
     onSuccess: (res) => {
-      toast.success("Order placed successfully!");
-      navigate(`/track/${res.data.order._id}`);
+      const order = res.data.order;
+
+      // ✅ COD pe seedha track page
+      if (form.paymentMethod === "COD") {
+        toast.success("Order placed! Pay on delivery.");
+        navigate(`/track/${order._id}`);
+        return;
+      }
+
+      // ✅ UPI/Card pe Razorpay open karo
+      toast.success("Order created! Opening payment...");
+      openRazorpay({
+        orderId: order._id,
+        amount: order.totalAmount,
+        name: user?.name,
+        phone: user?.phone,
+        email: user?.email,
+        onSuccess: () => {
+          navigate(`/track/${order._id}`);
+        },
+      });
     },
     onError: (err) => {
       toast.error(err.response?.data?.msg || "Order failed");
@@ -107,7 +129,11 @@ export default function Order() {
                 <label style={labelStyle}>{field}</label>
                 <input
                   type="number"
-                  placeholder={field === "chest" ? "e.g. 36" : field === "waist" ? "e.g. 30" : field === "hip" ? "e.g. 38" : "e.g. 42"}
+                  placeholder={
+                    field === "chest" ? "e.g. 36" :
+                    field === "waist" ? "e.g. 30" :
+                    field === "hip" ? "e.g. 38" : "e.g. 42"
+                  }
                   value={form.measurements[field]}
                   onChange={(e) => setForm({
                     ...form,
@@ -118,6 +144,23 @@ export default function Order() {
                 />
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Price display */}
+        <div style={{
+          background: "#fff", border: "1px solid #eee",
+          borderRadius: 12, padding: 16, marginBottom: 16,
+          display: "flex", justifyContent: "space-between", alignItems: "center"
+        }}>
+          <div>
+            <div style={{ fontSize: 13, color: "#888" }}>Total amount</div>
+            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+              {form.clothType} · {form.fabric}
+            </div>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: "#D4537E" }}>
+            ₹{form.totalAmount}
           </div>
         </div>
 
@@ -150,6 +193,29 @@ export default function Order() {
               </div>
             ))}
           </div>
+
+          {/* COD note */}
+          {form.paymentMethod === "COD" && (
+            <div style={{
+              marginTop: 12, fontSize: 12, color: "#888",
+              background: "#fafafa", borderRadius: 8,
+              padding: "8px 12px"
+            }}>
+              Cash on delivery — delivery ke waqt payment karo
+            </div>
+          )}
+
+          {/* Razorpay note */}
+          {form.paymentMethod !== "COD" && (
+            <div style={{
+              marginTop: 12, fontSize: 12, color: "#888",
+              background: "#fafafa", borderRadius: 8,
+              padding: "8px 12px", display: "flex",
+              alignItems: "center", gap: 6
+            }}>
+              🔒 Secure payment via Razorpay
+            </div>
+          )}
         </div>
 
         <button
@@ -164,7 +230,11 @@ export default function Order() {
             fontWeight: 500
           }}
         >
-          {isPending ? "Placing order..." : `Confirm order — ₹${form.totalAmount}`}
+          {isPending
+            ? "Processing..."
+            : form.paymentMethod === "COD"
+            ? `Place order — ₹${form.totalAmount}`
+            : `Pay ₹${form.totalAmount} securely`}
         </button>
       </form>
     </div>

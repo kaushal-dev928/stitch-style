@@ -6,6 +6,8 @@ const { generateOTP, sendOTPEmail } = require("../utils/emailService");
 // ✅ REGISTER
 exports.register = async (req, res) => {
   try {
+    console.log("📥 Register body:", req.body);
+
     const { name, phone, email, password } = req.body;
 
     const userExists = await User.findOne({ phone });
@@ -19,7 +21,6 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -33,13 +34,18 @@ exports.register = async (req, res) => {
       isVerified: false,
     });
 
+    console.log("✅ User created:", user._id); // ← add karo
+
     await sendOTPEmail(email, otp);
+
+    console.log("✅ OTP sent!"); // ← add karo
 
     res.status(201).json({
       msg: "OTP sent to your email",
       userId: user._id,
     });
   } catch (err) {
+    console.log("❌ Full error:", err); // ← full error dekho
     res.status(500).json({ error: err.message });
   }
 };

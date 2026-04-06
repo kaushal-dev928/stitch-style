@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getUserOrdersAPI } from "../api/orderAPI";
 import { useAuth } from "../context/AuthContext";
+import ReviewForm from "../components/ReviewForm";
 
 const STATUS_COLOR = {
   DELIVERED: { bg: "#E1F5EE", color: "#085041" },
@@ -13,6 +15,7 @@ const STATUS_COLOR = {
 export default function Profile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [reviewingOrder, setReviewingOrder] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["userOrders"],
@@ -81,10 +84,7 @@ export default function Profile() {
         ) : orders.length === 0 ? (
           <div style={{ color: "#aaa", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
             No orders yet —{" "}
-            <span
-              onClick={() => navigate("/catalogue")}
-              style={{ color: "#D4537E", cursor: "pointer" }}
-            >
+            <span onClick={() => navigate("/catalogue")} style={{ color: "#D4537E", cursor: "pointer" }}>
               browse catalogue
             </span>
           </div>
@@ -92,30 +92,65 @@ export default function Profile() {
           orders.map((order) => {
             const sc = STATUS_COLOR[order.status] || { bg: "#f5f5f5", color: "#666" };
             return (
-              <div
-                key={order._id}
-                onClick={() => navigate(`/track/${order._id}`)}
-                style={{
-                  display: "flex", justifyContent: "space-between",
-                  alignItems: "center", padding: "11px 0",
-                  borderBottom: "1px solid #f5f5f5", cursor: "pointer"
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>
-                    {order.clothType} · {order.fabric}
+              <div key={order._id} style={{
+                padding: "12px 0",
+                borderBottom: "1px solid #f5f5f5",
+              }}>
+                {/* Order row */}
+                <div
+                  onClick={() => navigate(`/track/${order._id}`)}
+                  style={{
+                    display: "flex", justifyContent: "space-between",
+                    alignItems: "center", cursor: "pointer"
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>
+                      {order.clothType} · {order.fabric}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
+                      #{order._id.slice(-6).toUpperCase()} · ₹{order.totalAmount}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>
-                    #{order._id.slice(-6).toUpperCase()} · ₹{order.totalAmount}
+                  <div style={{
+                    fontSize: 10, background: sc.bg,
+                    color: sc.color, padding: "4px 10px",
+                    borderRadius: 20, fontWeight: 500
+                  }}>
+                    {order.status?.replace(/_/g, " ")}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: 10, background: sc.bg,
-                  color: sc.color, padding: "4px 10px",
-                  borderRadius: 20, fontWeight: 500
-                }}>
-                  {order.status?.replace(/_/g, " ")}
-                </div>
+
+                {/* ✅ Review button — sirf DELIVERED order pe */}
+                {order.status === "DELIVERED" && (
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      onClick={() => setReviewingOrder(
+                        reviewingOrder === order._id ? null : order._id
+                      )}
+                      style={{
+                        padding: "5px 14px",
+                        background: reviewingOrder === order._id ? "#FBEAF0" : "none",
+                        border: "1px solid #F4C0D1",
+                        borderRadius: 20, fontSize: 12,
+                        cursor: "pointer", color: "#D4537E"
+                      }}
+                    >
+                      {reviewingOrder === order._id ? "Cancel review" : "Write a review ★"}
+                    </button>
+                  </div>
+                )}
+
+                {/* ✅ Review form */}
+                {reviewingOrder === order._id && (
+                  <div style={{ marginTop: 12 }}>
+                    <ReviewForm
+                      orderId={order._id}
+                      clothType={order.clothType}
+                      onClose={() => setReviewingOrder(null)}
+                    />
+                  </div>
+                )}
               </div>
             );
           })

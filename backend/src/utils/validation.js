@@ -1,6 +1,5 @@
 const Joi = require("joi");
 
-// ✅ Order validation
 exports.orderSchema = Joi.object({
   clothType: Joi.string().required(),
   fabric: Joi.string().required(),
@@ -11,4 +10,5 @@ exports.orderSchema = Joi.object({
     length: Joi.number().required(),
   }).required(),
   paymentMethod: Joi.string().required(),
+  totalAmount: Joi.number().required(), // ✅ Ye add karo
 });
