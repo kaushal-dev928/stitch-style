@@ -8,8 +8,8 @@ A full-stack e-commerce platform for a custom clothing startup based in Pune, Ma
 
 ## Live Demo
 
-- Frontend: [stitch-style.vercel.app](https://stitch-style.vercel.app)
-- Backend API: [stitch-style-api.onrender.com](https://stitch-style-api.onrender.com)
+- Frontend: [stitch-style.vercel.app]
+- Backend API: [stitch-style-api.onrender.com]
 
 ---
 
