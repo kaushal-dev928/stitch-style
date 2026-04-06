@@ -126,7 +126,7 @@ npm start
 
 ## Developer
 
-Made with love by **Kabir** — Pune, Maharashtra
+Made with love by **Kaushal** — Pune, Maharashtra
 
 ---
 
